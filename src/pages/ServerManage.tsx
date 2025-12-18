@@ -477,7 +477,7 @@ const ServerManage = () => {
                       </div>
                       <p className="text-2xl font-bold text-white mb-3">
                         {diskHistory[diskHistory.length - 1].toFixed(1)} GB 
-                        <span className="text-sm text-gray-500"> / 50 GB</span>
+                        <span className="text-sm text-gray-500">/ 10 GB</span>
                       </p>
                     </div>
                     {renderChart(diskHistory, 'Disk', 50, 'GB')}
