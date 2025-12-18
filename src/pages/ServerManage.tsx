@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,26 +19,49 @@ interface FileItem {
   content?: string;
 }
 
+interface Plugin {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description: string;
+  enabled: boolean;
+  installed: boolean;
+}
+
 const ServerManage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'console' | 'files'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'files' | 'plugins'>('console');
   const [serverStatus, setServerStatus] = useState<'running' | 'stopped' | 'starting'>('stopped');
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const [consoleInput, setConsoleInput] = useState('');
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [cpuHistory, setCpuHistory] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const [memoryHistory, setMemoryHistory] = useState<number[]>([1.84, 1.84, 1.84, 1.84, 1.84, 1.84, 1.84, 1.84, 1.84, 1.84]);
+  const [diskHistory, setDiskHistory] = useState<number[]>([12.3, 12.3, 12.3, 12.3, 12.3, 12.3, 12.3, 12.3, 12.3, 12.3]);
+
   const [files, setFiles] = useState<FileItem[]>([
-    { id: '1', name: 'server.properties', type: 'file', size: '2.3 KB', modified: '2024-12-18 14:30', content: 'server-port=25565\nmax-players=20\ndifficulty=normal' },
+    { id: '1', name: 'server.properties', type: 'file', size: '2.3 KB', modified: '2024-12-18 14:30', content: 'server-port=25565\nmax-players=20\ndifficulty=normal\ngamemode=survival\npvp=true' },
     { id: '2', name: 'plugins', type: 'folder', modified: '2024-12-18 12:00' },
     { id: '3', name: 'world', type: 'folder', modified: '2024-12-15 09:15' },
-    { id: '4', name: 'config.yml', type: 'file', size: '1.8 KB', modified: '2024-12-17 16:45', content: 'version: 1.0\nport: 25565' },
+    { id: '4', name: 'config.yml', type: 'file', size: '1.8 KB', modified: '2024-12-17 16:45', content: 'version: 1.0\nport: 25565\nmax-connections: 100' },
     { id: '5', name: 'mods', type: 'folder', modified: '2024-12-14 11:20' },
+    { id: '6', name: 'whitelist.json', type: 'file', size: '0.5 KB', modified: '2024-12-18 10:00', content: '[\n  {\n    "uuid": "abc123",\n    "name": "Player1"\n  }\n]' },
+  ]);
+
+  const [plugins, setPlugins] = useState<Plugin[]>([
+    { id: '1', name: 'EssentialsX', version: '2.20.1', author: 'EssentialsX Team', description: 'Основные команды и функции для сервера', enabled: true, installed: true },
+    { id: '2', name: 'WorldEdit', version: '7.2.15', author: 'sk89q', description: 'Мощный редактор мира в игре', enabled: true, installed: true },
+    { id: '3', name: 'Vault', version: '1.7.3', author: 'MilkBowl', description: 'API для экономики и прав', enabled: false, installed: true },
+    { id: '4', name: 'LuckPerms', version: '5.4.102', author: 'Luck', description: 'Система прав и разрешений', enabled: false, installed: false },
+    { id: '5', name: 'CoreProtect', version: '21.3', author: 'Intelli', description: 'Логирование и откат изменений', enabled: false, installed: false },
   ]);
 
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [showFileDialog, setShowFileDialog] = useState(false);
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showFileViewDialog, setShowFileViewDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [editedContent, setEditedContent] = useState('');
@@ -47,6 +71,17 @@ const ServerManage = () => {
       consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [consoleLogs]);
+
+  useEffect(() => {
+    if (serverStatus === 'running') {
+      const interval = setInterval(() => {
+        setCpuHistory(prev => [...prev.slice(1), Math.random() * 5 + 0.5]);
+        setMemoryHistory(prev => [...prev.slice(1), Math.random() * 0.5 + 1.6]);
+        setDiskHistory(prev => [...prev.slice(1), Math.random() * 0.2 + 12.2]);
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [serverStatus]);
 
   const startServer = () => {
     setServerStatus('starting');
@@ -116,6 +151,11 @@ const ServerManage = () => {
     }
   };
 
+  const handleFileView = (file: FileItem) => {
+    setSelectedFile(file);
+    setShowFileViewDialog(true);
+  };
+
   const handleSaveFile = () => {
     if (selectedFile) {
       setFiles(files.map(f => 
@@ -136,16 +176,22 @@ const ServerManage = () => {
   const handleUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = e.target.files;
     if (uploadedFiles) {
-      const newFiles: FileItem[] = Array.from(uploadedFiles).map((file, idx) => ({
-        id: Date.now().toString() + idx,
-        name: file.name,
-        type: 'file' as const,
-        size: `${(file.size / 1024).toFixed(2)} KB`,
-        modified: new Date().toLocaleString('ru-RU'),
-        content: 'Содержимое загруженного файла...'
-      }));
-      setFiles([...files, ...newFiles]);
-      setShowUploadDialog(false);
+      Array.from(uploadedFiles).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const content = event.target?.result as string;
+          const newFile: FileItem = {
+            id: Date.now().toString() + Math.random(),
+            name: file.name,
+            type: 'file',
+            size: `${(file.size / 1024).toFixed(2)} KB`,
+            modified: new Date().toLocaleString('ru-RU'),
+            content: content
+          };
+          setFiles(prev => [...prev, newFile]);
+        };
+        reader.readAsText(file);
+      });
     }
   };
 
@@ -171,6 +217,50 @@ const ServerManage = () => {
     a.download = file.name;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const togglePlugin = (pluginId: string) => {
+    setPlugins(plugins.map(p => 
+      p.id === pluginId ? { ...p, enabled: !p.enabled } : p
+    ));
+  };
+
+  const installPlugin = (pluginId: string) => {
+    setPlugins(plugins.map(p => 
+      p.id === pluginId ? { ...p, installed: true } : p
+    ));
+  };
+
+  const uninstallPlugin = (pluginId: string) => {
+    if (confirm('Вы уверены, что хотите удалить этот плагин?')) {
+      setPlugins(plugins.map(p => 
+        p.id === pluginId ? { ...p, installed: false, enabled: false } : p
+      ));
+    }
+  };
+
+  const renderChart = (data: number[], label: string, max: number, unit: string) => {
+    const maxValue = Math.max(...data, max);
+    const height = 100;
+    
+    return (
+      <div className="relative h-[100px] flex items-end gap-1">
+        {data.map((value, idx) => {
+          const barHeight = (value / maxValue) * height;
+          return (
+            <div key={idx} className="flex-1 flex flex-col justify-end">
+              <div 
+                className="bg-primary rounded-t transition-all duration-500"
+                style={{ height: `${barHeight}px` }}
+              />
+            </div>
+          );
+        })}
+        <div className="absolute top-0 left-0 text-xs text-gray-400">
+          {data[data.length - 1].toFixed(2)} {unit}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -242,7 +332,11 @@ const ServerManage = () => {
               <Icon name="Settings" className="mr-3" size={18} />
               Настройки
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start text-gray-300 hover:bg-[#2a2a2a] hover:text-white ${activeTab === 'plugins' ? 'bg-[#2a2a2a]' : ''}`}
+              onClick={() => setActiveTab('plugins')}
+            >
               <Icon name="Puzzle" className="mr-3" size={18} />
               Плагины
             </Button>
@@ -264,48 +358,54 @@ const ServerManage = () => {
         </aside>
 
         <main className="flex-1 p-6">
-          {activeTab === 'console' ? (
+          {activeTab === 'console' && (
             <>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <Card className="bg-[#2a2a2a] border-[#3a3a3a]">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-400">Использование Процессора</p>
-                        <p className="text-2xl font-bold text-white">0.58% <span className="text-sm text-gray-500">/ 100%</span></p>
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm text-gray-400">Процессор</p>
+                        <Icon name="Cpu" className="text-primary" size={20} />
                       </div>
-                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Icon name="Cpu" className="text-primary" size={24} />
-                      </div>
+                      <p className="text-2xl font-bold text-white mb-3">
+                        {cpuHistory[cpuHistory.length - 1].toFixed(2)}% 
+                        <span className="text-sm text-gray-500"> / 100%</span>
+                      </p>
                     </div>
+                    {renderChart(cpuHistory, 'CPU', 100, '%')}
                   </CardContent>
                 </Card>
 
                 <Card className="bg-[#2a2a2a] border-[#3a3a3a]">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-400">Использование Памяти</p>
-                        <p className="text-2xl font-bold text-white">1.84 GB <span className="text-sm text-gray-500">/ 8 GB</span></p>
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm text-gray-400">Память</p>
+                        <Icon name="MemoryStick" className="text-primary" size={20} />
                       </div>
-                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Icon name="MemoryStick" className="text-primary" size={24} />
-                      </div>
+                      <p className="text-2xl font-bold text-white mb-3">
+                        {memoryHistory[memoryHistory.length - 1].toFixed(2)} GB 
+                        <span className="text-sm text-gray-500"> / 8 GB</span>
+                      </p>
                     </div>
+                    {renderChart(memoryHistory, 'RAM', 8, 'GB')}
                   </CardContent>
                 </Card>
 
                 <Card className="bg-[#2a2a2a] border-[#3a3a3a]">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-2">
                         <p className="text-sm text-gray-400">Диск</p>
-                        <p className="text-2xl font-bold text-white">12.3 GB <span className="text-sm text-gray-500">/ 50 GB</span></p>
+                        <Icon name="HardDrive" className="text-primary" size={20} />
                       </div>
-                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Icon name="HardDrive" className="text-primary" size={24} />
-                      </div>
+                      <p className="text-2xl font-bold text-white mb-3">
+                        {diskHistory[diskHistory.length - 1].toFixed(1)} GB 
+                        <span className="text-sm text-gray-500"> / 50 GB</span>
+                      </p>
                     </div>
+                    {renderChart(diskHistory, 'Disk', 50, 'GB')}
                   </CardContent>
                 </Card>
               </div>
@@ -396,7 +496,9 @@ const ServerManage = () => {
                 </CardContent>
               </Card>
             </>
-          ) : (
+          )}
+
+          {activeTab === 'files' && (
             <Card className="bg-[#2a2a2a] border-[#3a3a3a]">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-6">
@@ -418,20 +520,19 @@ const ServerManage = () => {
 
                 <div className="space-y-1">
                   <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-gray-500 font-semibold border-b border-[#3a3a3a]">
-                    <div className="col-span-5">Имя</div>
+                    <div className="col-span-4">Имя</div>
                     <div className="col-span-2">Размер</div>
                     <div className="col-span-3">Изменено</div>
-                    <div className="col-span-2 text-right">Действия</div>
+                    <div className="col-span-3 text-right">Действия</div>
                   </div>
 
                   <ScrollArea className="h-[500px]">
                     {files.map((file) => (
                       <div 
                         key={file.id} 
-                        className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-[#333] rounded-lg cursor-pointer transition-colors items-center"
-                        onClick={() => handleFileClick(file)}
+                        className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-[#333] rounded-lg transition-colors items-center"
                       >
-                        <div className="col-span-5 flex items-center gap-3">
+                        <div className="col-span-4 flex items-center gap-3">
                           <Icon 
                             name={file.type === 'folder' ? 'Folder' : 'File'} 
                             className={file.type === 'folder' ? 'text-yellow-500' : 'text-blue-400'} 
@@ -445,22 +546,44 @@ const ServerManage = () => {
                         <div className="col-span-3 text-gray-400 text-sm">
                           {file.modified}
                         </div>
-                        <div className="col-span-2 flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="col-span-3 flex justify-end gap-1">
                           {file.type === 'file' && (
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => handleDownloadFile(file)}
-                              className="text-gray-400 hover:text-white"
-                            >
-                              <Icon name="Download" size={16} />
-                            </Button>
+                            <>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleFileView(file)}
+                                className="text-gray-400 hover:text-white"
+                                title="Просмотр"
+                              >
+                                <Icon name="Eye" size={16} />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleFileClick(file)}
+                                className="text-gray-400 hover:text-white"
+                                title="Редактировать"
+                              >
+                                <Icon name="Edit" size={16} />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleDownloadFile(file)}
+                                className="text-gray-400 hover:text-white"
+                                title="Скачать"
+                              >
+                                <Icon name="Download" size={16} />
+                              </Button>
+                            </>
                           )}
                           <Button 
                             size="sm" 
                             variant="ghost" 
                             onClick={() => handleDeleteFile(file.id)}
                             className="text-red-400 hover:text-red-300"
+                            title="Удалить"
                           >
                             <Icon name="Trash2" size={16} />
                           </Button>
@@ -472,13 +595,108 @@ const ServerManage = () => {
               </CardContent>
             </Card>
           )}
+
+          {activeTab === 'plugins' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Icon name="Puzzle" size={28} />
+                  Плагины
+                </h2>
+              </div>
+
+              <Tabs defaultValue="installed" className="w-full">
+                <TabsList className="bg-[#2a2a2a] border-[#3a3a3a]">
+                  <TabsTrigger value="installed" className="data-[state=active]:bg-[#333]">
+                    Установленные ({plugins.filter(p => p.installed).length})
+                  </TabsTrigger>
+                  <TabsTrigger value="available" className="data-[state=active]:bg-[#333]">
+                    Доступные ({plugins.filter(p => !p.installed).length})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="installed" className="space-y-4 mt-4">
+                  {plugins.filter(p => p.installed).map((plugin) => (
+                    <Card key={plugin.id} className="bg-[#2a2a2a] border-[#3a3a3a]">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <CardTitle className="text-white">{plugin.name}</CardTitle>
+                              <Badge variant={plugin.enabled ? 'default' : 'secondary'}>
+                                {plugin.enabled ? 'Включен' : 'Выключен'}
+                              </Badge>
+                              <Badge variant="outline" className="text-gray-400">
+                                v{plugin.version}
+                              </Badge>
+                            </div>
+                            <CardDescription className="text-gray-400">
+                              Автор: {plugin.author}
+                            </CardDescription>
+                            <p className="text-sm text-gray-300 mt-2">{plugin.description}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant={plugin.enabled ? 'outline' : 'default'}
+                              onClick={() => togglePlugin(plugin.id)}
+                              className={plugin.enabled ? 'border-gray-600' : ''}
+                            >
+                              {plugin.enabled ? 'Выключить' : 'Включить'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => uninstallPlugin(plugin.id)}
+                            >
+                              Удалить
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </TabsContent>
+
+                <TabsContent value="available" className="space-y-4 mt-4">
+                  {plugins.filter(p => !p.installed).map((plugin) => (
+                    <Card key={plugin.id} className="bg-[#2a2a2a] border-[#3a3a3a]">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <CardTitle className="text-white">{plugin.name}</CardTitle>
+                              <Badge variant="outline" className="text-gray-400">
+                                v{plugin.version}
+                              </Badge>
+                            </div>
+                            <CardDescription className="text-gray-400">
+                              Автор: {plugin.author}
+                            </CardDescription>
+                            <p className="text-sm text-gray-300 mt-2">{plugin.description}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => installPlugin(plugin.id)}
+                          >
+                            <Icon name="Download" className="mr-2" size={16} />
+                            Установить
+                          </Button>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
         </main>
       </div>
 
       <Dialog open={showFileDialog} onOpenChange={setShowFileDialog}>
         <DialogContent className="max-w-3xl bg-[#2a2a2a] border-[#3a3a3a] text-white">
           <DialogHeader>
-            <DialogTitle>Редактирование файла: {selectedFile?.name}</DialogTitle>
+            <DialogTitle>Редактирование: {selectedFile?.name}</DialogTitle>
             <DialogDescription className="text-gray-400">
               Внесите изменения и нажмите "Сохранить"
             </DialogDescription>
@@ -496,6 +714,36 @@ const ServerManage = () => {
             </Button>
             <Button onClick={handleSaveFile}>
               Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showFileViewDialog} onOpenChange={setShowFileViewDialog}>
+        <DialogContent className="max-w-3xl bg-[#2a2a2a] border-[#3a3a3a] text-white">
+          <DialogHeader>
+            <DialogTitle>Просмотр: {selectedFile?.name}</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Содержимое файла (только для чтения)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <ScrollArea className="h-[400px] bg-[#1a1a1a] border border-[#3a3a3a] rounded-lg p-4">
+              <pre className="text-white font-mono text-sm whitespace-pre-wrap">
+                {selectedFile?.content || 'Файл пуст'}
+              </pre>
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFileViewDialog(false)} className="border-gray-600 text-gray-300">
+              Закрыть
+            </Button>
+            <Button onClick={() => {
+              setShowFileViewDialog(false);
+              if (selectedFile) handleDownloadFile(selectedFile);
+            }}>
+              <Icon name="Download" className="mr-2" size={16} />
+              Скачать
             </Button>
           </DialogFooter>
         </DialogContent>
