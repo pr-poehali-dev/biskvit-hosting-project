@@ -122,7 +122,7 @@ const Index = () => {
               Начать бесплатно
               <Icon name="ArrowRight" className="ml-2" size={20} />
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-6">
+            <Button size="lg" variant="outline" className="text-lg px-8 py-6" onClick={() => navigate('/pricing')}>
               Посмотреть тарифы
             </Button>
           </div>
@@ -232,7 +232,7 @@ const Index = () => {
                       </li>
                     ))}
                   </ul>
-                  <Button className="w-full" variant={plan.popular ? 'default' : 'outline'}>
+                  <Button className="w-full" variant={plan.popular ? 'default' : 'outline'} onClick={() => navigate('/pricing')}>
                     Выбрать план
                   </Button>
                 </CardContent>

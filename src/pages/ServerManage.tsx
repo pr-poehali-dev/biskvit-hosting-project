@@ -58,7 +58,7 @@ const ServerManage = () => {
         clearInterval(interval);
         setServerStatus('running');
       }
-    }, 100);
+    }, 18000 / logs.length);
   };
 
   const stopServer = () => {
