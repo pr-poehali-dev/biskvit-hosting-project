@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,9 +30,22 @@ interface Plugin {
   installed: boolean;
 }
 
+interface Database {
+  id: string;
+  name: string;
+  type: 'mysql' | 'postgresql';
+  status: 'running' | 'stopped';
+  size: string;
+  created: string;
+  username: string;
+  password: string;
+  host: string;
+  port: number;
+}
+
 const ServerManage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'console' | 'files' | 'plugins'>('console');
+  const [activeTab, setActiveTab] = useState<'console' | 'files' | 'plugins' | 'databases'>('console');
   const [serverStatus, setServerStatus] = useState<'running' | 'stopped' | 'starting'>('stopped');
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const [consoleInput, setConsoleInput] = useState('');
@@ -59,12 +73,25 @@ const ServerManage = () => {
     { id: '5', name: 'CoreProtect', version: '21.3', author: 'Intelli', description: 'Логирование и откат изменений', enabled: false, installed: false },
   ]);
 
+  const [databases, setDatabases] = useState<Database[]>([
+    { id: '1', name: 'minecraft_db', type: 'mysql', status: 'running', size: '45.2 MB', created: '2024-12-10', username: 'minecraft_user', password: 'pass123', host: 'localhost', port: 3306 },
+    { id: '2', name: 'players_data', type: 'postgresql', status: 'running', size: '23.8 MB', created: '2024-12-15', username: 'players_admin', password: 'secure456', host: 'localhost', port: 5432 },
+  ]);
+
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [selectedDatabase, setSelectedDatabase] = useState<Database | null>(null);
   const [showFileDialog, setShowFileDialog] = useState(false);
   const [showFileViewDialog, setShowFileViewDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [showNewDatabaseDialog, setShowNewDatabaseDialog] = useState(false);
+  const [showDatabaseInfoDialog, setShowDatabaseInfoDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [editedContent, setEditedContent] = useState('');
+  
+  const [newDbName, setNewDbName] = useState('');
+  const [newDbType, setNewDbType] = useState<'mysql' | 'postgresql'>('mysql');
+  const [newDbUsername, setNewDbUsername] = useState('');
+  const [newDbPassword, setNewDbPassword] = useState('');
 
   useEffect(() => {
     if (consoleLogs.length > 0) {
@@ -239,6 +266,50 @@ const ServerManage = () => {
     }
   };
 
+  const handleCreateDatabase = () => {
+    if (newDbName.trim() && newDbUsername.trim() && newDbPassword.trim()) {
+      const newDb: Database = {
+        id: Date.now().toString(),
+        name: newDbName,
+        type: newDbType,
+        status: 'running',
+        size: '0 MB',
+        created: new Date().toLocaleDateString('ru-RU'),
+        username: newDbUsername,
+        password: newDbPassword,
+        host: 'localhost',
+        port: newDbType === 'mysql' ? 3306 : 5432
+      };
+      setDatabases([...databases, newDb]);
+      setNewDbName('');
+      setNewDbUsername('');
+      setNewDbPassword('');
+      setShowNewDatabaseDialog(false);
+    }
+  };
+
+  const handleDeleteDatabase = (dbId: string) => {
+    if (confirm('Вы уверены, что хотите удалить эту базу данных? Все данные будут потеряны!')) {
+      setDatabases(databases.filter(db => db.id !== dbId));
+    }
+  };
+
+  const toggleDatabaseStatus = (dbId: string) => {
+    setDatabases(databases.map(db => 
+      db.id === dbId ? { ...db, status: db.status === 'running' ? 'stopped' : 'running' } : db
+    ));
+  };
+
+  const handleShowDatabaseInfo = (db: Database) => {
+    setSelectedDatabase(db);
+    setShowDatabaseInfoDialog(true);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Скопировано в буфер обмена!');
+  };
+
   const renderChart = (data: number[], label: string, max: number, unit: string) => {
     const maxValue = Math.max(...data, max);
     const height = 100;
@@ -318,7 +389,11 @@ const ServerManage = () => {
               <Icon name="Folder" className="mr-3" size={18} />
               Файлы
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-gray-300 hover:bg-[#2a2a2a] hover:text-white">
+            <Button 
+              variant="ghost" 
+              className={`w-full justify-start text-gray-300 hover:bg-[#2a2a2a] hover:text-white ${activeTab === 'databases' ? 'bg-[#2a2a2a]' : ''}`}
+              onClick={() => setActiveTab('databases')}
+            >
               <Icon name="Database" className="mr-3" size={18} />
               Базы Данных
             </Button>
@@ -596,6 +671,90 @@ const ServerManage = () => {
             </Card>
           )}
 
+          {activeTab === 'databases' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Icon name="Database" size={28} />
+                  Базы данных
+                </h2>
+                <Button onClick={() => setShowNewDatabaseDialog(true)}>
+                  <Icon name="Plus" className="mr-2" size={16} />
+                  Создать базу данных
+                </Button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {databases.map((db) => (
+                  <Card key={db.id} className="bg-[#2a2a2a] border-[#3a3a3a]">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Icon name="Database" className={db.type === 'mysql' ? 'text-blue-400' : 'text-purple-400'} size={24} />
+                            <CardTitle className="text-white">{db.name}</CardTitle>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant={db.status === 'running' ? 'default' : 'secondary'}>
+                              {db.status === 'running' ? 'Запущена' : 'Остановлена'}
+                            </Badge>
+                            <Badge variant="outline" className="text-gray-400">
+                              {db.type === 'mysql' ? 'MySQL' : 'PostgreSQL'}
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-gray-400 space-y-1">
+                            <div>Размер: {db.size}</div>
+                            <div>Создана: {db.created}</div>
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 border-gray-600"
+                          onClick={() => handleShowDatabaseInfo(db)}
+                        >
+                          <Icon name="Info" className="mr-2" size={16} />
+                          Подключение
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={db.status === 'running' ? 'outline' : 'default'}
+                          onClick={() => toggleDatabaseStatus(db.id)}
+                          className={db.status === 'running' ? 'border-gray-600' : ''}
+                        >
+                          {db.status === 'running' ? 'Остановить' : 'Запустить'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteDatabase(db.id)}
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {databases.length === 0 && (
+                <Card className="bg-[#2a2a2a] border-[#3a3a3a]">
+                  <CardContent className="p-12 text-center">
+                    <Icon name="Database" className="mx-auto mb-4 text-gray-600" size={48} />
+                    <p className="text-gray-400 mb-4">У вас пока нет баз данных</p>
+                    <Button onClick={() => setShowNewDatabaseDialog(true)}>
+                      Создать первую базу данных
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
           {activeTab === 'plugins' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
@@ -770,6 +929,164 @@ const ServerManage = () => {
             </Button>
             <Button onClick={handleCreateFolder}>
               Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showNewDatabaseDialog} onOpenChange={setShowNewDatabaseDialog}>
+        <DialogContent className="bg-[#2a2a2a] border-[#3a3a3a] text-white">
+          <DialogHeader>
+            <DialogTitle>Создать новую базу данных</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Заполните данные для новой базы данных
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="dbName" className="text-gray-300">Название базы данных</Label>
+              <Input
+                id="dbName"
+                value={newDbName}
+                onChange={(e) => setNewDbName(e.target.value)}
+                placeholder="my_database"
+                className="mt-2 bg-[#1a1a1a] border-[#3a3a3a] text-white"
+              />
+            </div>
+            <div>
+              <Label htmlFor="dbType" className="text-gray-300">Тип базы данных</Label>
+              <Select value={newDbType} onValueChange={(value: 'mysql' | 'postgresql') => setNewDbType(value)}>
+                <SelectTrigger className="mt-2 bg-[#1a1a1a] border-[#3a3a3a] text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#2a2a2a] border-[#3a3a3a]">
+                  <SelectItem value="mysql">MySQL</SelectItem>
+                  <SelectItem value="postgresql">PostgreSQL</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="dbUsername" className="text-gray-300">Имя пользователя</Label>
+              <Input
+                id="dbUsername"
+                value={newDbUsername}
+                onChange={(e) => setNewDbUsername(e.target.value)}
+                placeholder="admin"
+                className="mt-2 bg-[#1a1a1a] border-[#3a3a3a] text-white"
+              />
+            </div>
+            <div>
+              <Label htmlFor="dbPassword" className="text-gray-300">Пароль</Label>
+              <Input
+                id="dbPassword"
+                type="password"
+                value={newDbPassword}
+                onChange={(e) => setNewDbPassword(e.target.value)}
+                placeholder="••••••••"
+                className="mt-2 bg-[#1a1a1a] border-[#3a3a3a] text-white"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewDatabaseDialog(false)} className="border-gray-600 text-gray-300">
+              Отмена
+            </Button>
+            <Button onClick={handleCreateDatabase}>
+              Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDatabaseInfoDialog} onOpenChange={setShowDatabaseInfoDialog}>
+        <DialogContent className="bg-[#2a2a2a] border-[#3a3a3a] text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Информация о подключении: {selectedDatabase?.name}</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Используйте эти данные для подключения к базе данных
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDatabase && (
+            <div className="space-y-4 py-4">
+              <div className="bg-[#1a1a1a] rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-1">Хост</p>
+                    <p className="text-white font-mono">{selectedDatabase.host}</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(selectedDatabase.host)}>
+                    <Icon name="Copy" size={16} />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-1">Порт</p>
+                    <p className="text-white font-mono">{selectedDatabase.port}</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(selectedDatabase.port.toString())}>
+                    <Icon name="Copy" size={16} />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-1">База данных</p>
+                    <p className="text-white font-mono">{selectedDatabase.name}</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(selectedDatabase.name)}>
+                    <Icon name="Copy" size={16} />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-1">Пользователь</p>
+                    <p className="text-white font-mono">{selectedDatabase.username}</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(selectedDatabase.username)}>
+                    <Icon name="Copy" size={16} />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-1">Пароль</p>
+                    <p className="text-white font-mono">••••••••</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(selectedDatabase.password)}>
+                    <Icon name="Copy" size={16} />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-[#1a1a1a] rounded-lg p-4">
+                <p className="text-xs text-gray-400 mb-2">Строка подключения</p>
+                <div className="flex items-start gap-2">
+                  <code className="flex-1 text-xs text-white font-mono break-all">
+                    {selectedDatabase.type === 'mysql' 
+                      ? `mysql://${selectedDatabase.username}:${selectedDatabase.password}@${selectedDatabase.host}:${selectedDatabase.port}/${selectedDatabase.name}`
+                      : `postgresql://${selectedDatabase.username}:${selectedDatabase.password}@${selectedDatabase.host}:${selectedDatabase.port}/${selectedDatabase.name}`
+                    }
+                  </code>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => copyToClipboard(
+                      selectedDatabase.type === 'mysql' 
+                        ? `mysql://${selectedDatabase.username}:${selectedDatabase.password}@${selectedDatabase.host}:${selectedDatabase.port}/${selectedDatabase.name}`
+                        : `postgresql://${selectedDatabase.username}:${selectedDatabase.password}@${selectedDatabase.host}:${selectedDatabase.port}/${selectedDatabase.name}`
+                    )}
+                  >
+                    <Icon name="Copy" size={16} />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setShowDatabaseInfoDialog(false)}>
+              Закрыть
             </Button>
           </DialogFooter>
         </DialogContent>
