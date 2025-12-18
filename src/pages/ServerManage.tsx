@@ -461,7 +461,7 @@ const ServerManage = () => {
                       </div>
                       <p className="text-2xl font-bold text-white mb-3">
                         {memoryHistory[memoryHistory.length - 1].toFixed(2)} GB 
-                        <span className="text-sm text-gray-500"> / 8 GB</span>
+                        <span className="text-sm text-gray-500">/ 2 GB</span>
                       </p>
                     </div>
                     {renderChart(memoryHistory, 'RAM', 8, 'GB')}
