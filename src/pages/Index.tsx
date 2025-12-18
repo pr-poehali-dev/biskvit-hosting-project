@@ -1,13 +1,88 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import Icon from '@/components/ui/icon';
 
 const Index = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [selectedServer, setSelectedServer] = useState<string | null>(null);
+  const [serverStatus, setServerStatus] = useState<'running' | 'stopped' | 'starting'>('stopped');
+  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
+  const [files, setFiles] = useState([
+    { name: 'index.html', size: '2.4 KB', type: 'file' },
+    { name: 'styles.css', size: '1.8 KB', type: 'file' },
+    { name: 'app.js', size: '5.2 KB', type: 'file' },
+    { name: 'images', size: '—', type: 'folder' },
+  ]);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (consoleLogs.length > 0) {
+      consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [consoleLogs]);
+
+  const startServer = () => {
+    setServerStatus('starting');
+    setConsoleLogs([]);
+    const logs = [
+      '[00:16:23] [INFO] [isbxm0xx] Interface versions: Lock Auto initialized (477.4.0).',
+      '[00:16:23] [INFO] [vzbxm0xx] Interface versions: Lock Auto initialized (477.4.0).',
+      '[00:16:23] [INFO] [ScxmlxxCore] Initializing API Engine...',
+      '[00:16:23] [INFO] [ScxmlxxCore] API Engine v0.0.0 initialized successfully',
+      '[00:16:23] [INFO] [Scxmlx:Common] Config Catalog: /var/data/mods/common.toml',
+      '[00:16:23] [INFO] [Scxmlx:Common] Loaded system configurations. Running...',
+      '[00:16:23] [INFO] [Scxmlx:Common] Found 3 API connections in the config on our pre-ship provisioner.',
+      '[00:16:23] [INFO] [vzbxm0xx] Scanning...',
+      '[00:16:23] [WARN] [ScxmlxxCore] ===================================================',
+      '[00:16:23] [WARN] [ScxmlxxCore] Running outdated server',
+      '[00:16:23] [INFO] [ScxmlxxCore] Consider updating to 2.2 available',
+      '[00:16:23] [INFO] [ScxmlxxCore] https://github.com/BisqvitServer/MinecraftServer',
+      '[00:16:23] [WARN] [ScxmlxxCore] Visit our website for updates: https://bisqvit.host.ru',
+      '[00:16:23] [WARN] [ScxmlxxCore] ===================================================',
+      '[00:16:23] [INFO] [vzbxm0xx] STARTING Server version 1.0.1.NET (git-cc0ca0a)',
+      '[00:16:23] [INFO] [vzbxm0xx] Loading [Gateway-version] 1.8.1-v4.0.8 (git-cc0ca0a)',
+      '[00:16:23] [INFO] [vzbxm0xx] Enabled [Bisqvit] Server in 1100 ms',
+      '[00:16:23] [INFO] [vzbxm0xx] Default game type: SURVIVAL',
+      '[00:16:23] [INFO] [vzbxm0xx] NOTE: Server is running. Supports BunFork version 1.2.0. Download it here: https://apycore.org/download',
+      '[00:16:23] [INFO] [vzbxm0xx] Running 1 Bundle pack(s)',
+      '[00:16:23] [INFO] [vzbxm0xx] Starting server on 0.0.0.0:25565',
+      '[00:16:23] [INFO] [vzbxm0xx] Server started on UDP port 25565',
+      '[00:16:23] [INFO] [ServerUtil] Done 1 worker check (180ms)! For help, type "help"',
+    ];
+
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < logs.length) {
+        setConsoleLogs(prev => [...prev, logs[i]]);
+        i++;
+      } else {
+        clearInterval(interval);
+        setServerStatus('running');
+      }
+    }, 150);
+  };
+
+  const stopServer = () => {
+    setServerStatus('stopped');
+    setConsoleLogs(prev => [...prev, '[INFO] Server stopped by user']);
+  };
+
+  const restartServer = () => {
+    stopServer();
+    setTimeout(() => startServer(), 500);
+  };
+
+  const deleteFile = (fileName: string) => {
+    setFiles(files.filter(f => f.name !== fileName));
+  };
 
   return (
     <div className="min-h-screen">
@@ -41,7 +116,7 @@ const Index = () => {
             Разворачивайте сайты за минуты. Управляйте серверами и доменами из одного места.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-lg px-8 py-6">
+            <Button size="lg" className="text-lg px-8 py-6" onClick={() => { setShowRegister(true); setIsLoginOpen(true); }}>
               Начать бесплатно
               <Icon name="ArrowRight" className="ml-2" size={20} />
             </Button>
@@ -210,131 +285,316 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Dashboard Preview (Login Modal Content) */}
+      {/* Dashboard / Register Modal */}
       {isLoginOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setIsLoginOpen(false)}>
-          <Card className="w-full max-w-5xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-            <CardHeader className="border-b bg-muted/30">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl">Личный кабинет</CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setIsLoginOpen(false)}>
-                  <Icon name="X" size={24} />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <Tabs defaultValue="servers" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="servers">
-                    <Icon name="Server" className="mr-2" size={18} />
-                    Мои серверы
-                  </TabsTrigger>
-                  <TabsTrigger value="domains">
-                    <Icon name="Globe" className="mr-2" size={18} />
-                    Домены
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="servers" className="space-y-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">Управление серверами</h3>
-                    <Button>
-                      <Icon name="Plus" className="mr-2" size={18} />
-                      Создать сервер
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setIsLoginOpen(false); setShowRegister(false); }}>
+          <Card className="w-full max-w-6xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            {showRegister ? (
+              <>
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl">Регистрация</CardTitle>
+                    <Button variant="ghost" size="icon" onClick={() => { setIsLoginOpen(false); setShowRegister(false); }}>
+                      <Icon name="X" size={24} />
                     </Button>
                   </div>
-                  <div className="grid gap-4">
-                    {[
-                      { name: 'web-prod-01', status: 'running', cpu: '45%', ram: '2.1/4 GB', location: 'Москва' },
-                      { name: 'api-server', status: 'running', cpu: '23%', ram: '1.5/2 GB', location: 'СПб' },
-                      { name: 'test-server', status: 'stopped', cpu: '0%', ram: '0/1 GB', location: 'Москва' },
-                    ].map((server, idx) => (
-                      <Card key={idx} className="hover:shadow-md transition-shadow">
+                </CardHeader>
+                <CardContent className="p-8">
+                  <div className="max-w-md mx-auto space-y-6">
+                    <div className="text-center mb-8">
+                      <h3 className="text-2xl font-bold mb-2">Начните бесплатно</h3>
+                      <p className="text-muted-foreground">14 дней пробного периода без привязки карты</p>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="email">Email</Label>
+                        <Input id="email" type="email" placeholder="your@email.com" className="mt-1" />
+                      </div>
+                      <div>
+                        <Label htmlFor="password">Пароль</Label>
+                        <Input id="password" type="password" placeholder="Минимум 8 символов" className="mt-1" />
+                      </div>
+                      <div>
+                        <Label htmlFor="name">Имя</Label>
+                        <Input id="name" type="text" placeholder="Иван Петров" className="mt-1" />
+                      </div>
+                      <Button className="w-full" size="lg" onClick={() => { setShowRegister(false); }}>
+                        Создать аккаунт
+                      </Button>
+                      <p className="text-sm text-center text-muted-foreground">
+                        Уже есть аккаунт?{' '}
+                        <button className="text-primary hover:underline" onClick={() => setShowRegister(false)}>
+                          Войти
+                        </button>
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </>
+            ) : (
+              <>
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-2xl">Личный кабинет</CardTitle>
+                    <Button variant="ghost" size="icon" onClick={() => setIsLoginOpen(false)}>
+                      <Icon name="X" size={24} />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <Tabs defaultValue="servers" className="w-full">
+                    <TabsList className="grid w-full grid-cols-5 mb-6">
+                      <TabsTrigger value="servers">
+                        <Icon name="Server" className="mr-2" size={18} />
+                        Серверы
+                      </TabsTrigger>
+                      <TabsTrigger value="console">
+                        <Icon name="Terminal" className="mr-2" size={18} />
+                        Консоль
+                      </TabsTrigger>
+                      <TabsTrigger value="files">
+                        <Icon name="Folder" className="mr-2" size={18} />
+                        Файлы
+                      </TabsTrigger>
+                      <TabsTrigger value="domains">
+                        <Icon name="Globe" className="mr-2" size={18} />
+                        DNS
+                      </TabsTrigger>
+                      <TabsTrigger value="plugins">
+                        <Icon name="Puzzle" className="mr-2" size={18} />
+                        Плагины
+                      </TabsTrigger>
+                    </TabsList>
+
+                    {/* Servers Tab */}
+                    <TabsContent value="servers" className="space-y-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">Управление серверами</h3>
+                        <Button>
+                          <Icon name="Plus" className="mr-2" size={18} />
+                          Создать сервер
+                        </Button>
+                      </div>
+                      <div className="grid gap-4">
+                        {[
+                          { name: 'BisqVelocity', status: 'running', cpu: '45%', ram: '2.1/4 GB', storage: '706.43 MB / 2 GB', ip: 'bisqvit.host.ru' },
+                          { name: 'api-server', status: 'running', cpu: '23%', ram: '1.5/2 GB', storage: '174.17 MB / 2 GB', ip: '192.168.1.102' },
+                          { name: 'test-server', status: 'stopped', cpu: '0%', ram: '0/1 GB', storage: '1.09 GB / 177.1 GB', ip: '192.168.1.103' },
+                        ].map((server, idx) => (
+                          <Card key={idx} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedServer(server.name)}>
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between flex-wrap gap-4">
+                                <div className="flex items-center gap-4">
+                                  <div className={`w-3 h-3 rounded-full ${server.status === 'running' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                                  <div>
+                                    <div className="font-semibold text-lg">{server.name}</div>
+                                    <div className="text-sm text-muted-foreground">{server.ip}</div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                  <div className="text-sm">
+                                    <div className="text-muted-foreground">CPU</div>
+                                    <div className="font-semibold">{server.cpu}</div>
+                                  </div>
+                                  <div className="text-sm">
+                                    <div className="text-muted-foreground">RAM</div>
+                                    <div className="font-semibold">{server.ram}</div>
+                                  </div>
+                                  <div className="text-sm">
+                                    <div className="text-muted-foreground">Диск</div>
+                                    <div className="font-semibold">{server.storage}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </TabsContent>
+
+                    {/* Console Tab */}
+                    <TabsContent value="console" className="space-y-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">Консоль сервера</h3>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={startServer}
+                            disabled={serverStatus === 'running' || serverStatus === 'starting'}
+                          >
+                            <Icon name="Play" className="mr-2" size={16} />
+                            Старт
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={stopServer}
+                            disabled={serverStatus === 'stopped'}
+                          >
+                            <Icon name="Square" className="mr-2" size={16} />
+                            Стоп
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={restartServer}
+                          >
+                            <Icon name="RotateCw" className="mr-2" size={16} />
+                            Рестарт
+                          </Button>
+                        </div>
+                      </div>
+                      <Card className="bg-black text-green-400 font-mono text-sm">
                         <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className={`w-3 h-3 rounded-full ${server.status === 'running' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                              <div>
-                                <div className="font-semibold text-lg">{server.name}</div>
-                                <div className="text-sm text-muted-foreground">{server.location}</div>
+                          <ScrollArea className="h-[500px]">
+                            {consoleLogs.length === 0 ? (
+                              <div className="text-gray-500">Консоль пуста. Запустите сервер...</div>
+                            ) : (
+                              consoleLogs.map((log, idx) => (
+                                <div key={idx} className="leading-relaxed">{log}</div>
+                              ))
+                            )}
+                            <div ref={consoleEndRef} />
+                          </ScrollArea>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    {/* Files Tab */}
+                    <TabsContent value="files" className="space-y-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">Файловый менеджер</h3>
+                        <div className="flex gap-2">
+                          <Button size="sm">
+                            <Icon name="Upload" className="mr-2" size={16} />
+                            Загрузить
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Icon name="FolderPlus" className="mr-2" size={16} />
+                            Новая папка
+                          </Button>
+                        </div>
+                      </div>
+                      <Card>
+                        <CardContent className="p-0">
+                          <div className="divide-y">
+                            {files.map((file, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                                <div className="flex items-center gap-4">
+                                  <Icon name={file.type === 'folder' ? 'Folder' : 'File'} className="text-primary" size={24} />
+                                  <div>
+                                    <div className="font-semibold">{file.name}</div>
+                                    <div className="text-sm text-muted-foreground">{file.size}</div>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="ghost">
+                                    <Icon name="Eye" size={16} />
+                                  </Button>
+                                  <Button size="sm" variant="ghost">
+                                    <Icon name="Download" size={16} />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => deleteFile(file.name)}>
+                                    <Icon name="Trash2" size={16} />
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-8">
-                              <div className="text-sm">
-                                <div className="text-muted-foreground">CPU</div>
-                                <div className="font-semibold">{server.cpu}</div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    {/* DNS/Domains Tab */}
+                    <TabsContent value="domains" className="space-y-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">DNS управление</h3>
+                        <Button>
+                          <Icon name="Plus" className="mr-2" size={18} />
+                          Добавить запись
+                        </Button>
+                      </div>
+                      <div className="grid gap-4">
+                        {[
+                          { type: 'A', name: 'bisqvit.host.ru', value: '192.168.1.100', ttl: '3600' },
+                          { type: 'CNAME', name: 'www', value: 'bisqvit.host.ru', ttl: '3600' },
+                          { type: 'MX', name: '@', value: 'mail.bisqvit.host.ru', ttl: '3600' },
+                        ].map((record, idx) => (
+                          <Card key={idx}>
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline">{record.type}</Badge>
+                                  <div>
+                                    <div className="font-semibold">{record.name}</div>
+                                    <div className="text-sm text-muted-foreground">{record.value}</div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-sm text-muted-foreground">TTL: {record.ttl}</div>
+                                  <Button size="sm" variant="outline">
+                                    <Icon name="Pencil" size={16} />
+                                  </Button>
+                                  <Button size="sm" variant="outline">
+                                    <Icon name="Trash2" size={16} />
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="text-sm">
-                                <div className="text-muted-foreground">RAM</div>
-                                <div className="font-semibold">{server.ram}</div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </TabsContent>
+
+                    {/* Plugins Tab */}
+                    <TabsContent value="plugins" className="space-y-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">Установленные плагины</h3>
+                        <Button>
+                          <Icon name="Plus" className="mr-2" size={18} />
+                          Установить плагин
+                        </Button>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {[
+                          { name: 'BunFork Gateway', version: '1.2.0', status: 'active', desc: 'Основной шлюз для подключения' },
+                          { name: 'ScxmlCore API', version: '0.0.0', status: 'active', desc: 'API движок для сервера' },
+                          { name: 'LockAuto', version: '477.4.0', status: 'active', desc: 'Система блокировок' },
+                          { name: 'Common Config', version: '1.0.0', status: 'inactive', desc: 'Общие конфигурации' },
+                        ].map((plugin, idx) => (
+                          <Card key={idx}>
+                            <CardHeader>
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <CardTitle className="text-lg">{plugin.name}</CardTitle>
+                                  <CardDescription>v{plugin.version}</CardDescription>
+                                </div>
+                                <Badge variant={plugin.status === 'active' ? 'default' : 'secondary'}>
+                                  {plugin.status === 'active' ? 'Активен' : 'Неактивен'}
+                                </Badge>
                               </div>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-sm text-muted-foreground mb-4">{plugin.desc}</p>
                               <div className="flex gap-2">
-                                <Button size="sm" variant="outline">
-                                  <Icon name="Settings" size={16} />
+                                <Button size="sm" variant="outline" className="flex-1">
+                                  <Icon name="Settings" className="mr-2" size={14} />
+                                  Настройки
                                 </Button>
                                 <Button size="sm" variant="outline">
-                                  {server.status === 'running' ? <Icon name="Square" size={16} /> : <Icon name="Play" size={16} />}
+                                  <Icon name="Trash2" size={14} />
                                 </Button>
                               </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="domains" className="space-y-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-semibold">Мои домены</h3>
-                    <Button>
-                      <Icon name="Plus" className="mr-2" size={18} />
-                      Добавить домен
-                    </Button>
-                  </div>
-                  <div className="grid gap-4">
-                    {[
-                      { domain: 'example.com', expires: '15.08.2025', ssl: true, status: 'active' },
-                      { domain: 'myshop.ru', expires: '03.12.2025', ssl: true, status: 'active' },
-                      { domain: 'testsite.org', expires: '22.01.2025', ssl: false, status: 'expiring' },
-                    ].map((domain, idx) => (
-                      <Card key={idx} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <Icon name="Globe" className="text-primary" size={24} />
-                              <div>
-                                <div className="font-semibold text-lg">{domain.domain}</div>
-                                <div className="text-sm text-muted-foreground">Истекает: {domain.expires}</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              {domain.ssl ? (
-                                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-600">
-                                  <Icon name="Lock" className="mr-1" size={12} />
-                                  SSL
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-600">
-                                  <Icon name="AlertCircle" className="mr-1" size={12} />
-                                  Нет SSL
-                                </Badge>
-                              )}
-                              <Badge variant={domain.status === 'active' ? 'default' : 'destructive'}>
-                                {domain.status === 'active' ? 'Активен' : 'Истекает'}
-                              </Badge>
-                              <Button size="sm" variant="outline">
-                                <Icon name="Settings" size={16} />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </>
+            )}
           </Card>
         </div>
       )}
