@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -10,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Icon from '@/components/ui/icon';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [selectedServer, setSelectedServer] = useState<string | null>(null);
@@ -377,11 +379,11 @@ const Index = () => {
                       </div>
                       <div className="grid gap-4">
                         {[
-                          { name: 'BisqVelocity', status: 'running', cpu: '45%', ram: '2.1/4 GB', storage: '706.43 MB / 2 GB', ip: 'bisqvit.host.ru' },
-                          { name: 'api-server', status: 'running', cpu: '23%', ram: '1.5/2 GB', storage: '174.17 MB / 2 GB', ip: '192.168.1.102' },
-                          { name: 'test-server', status: 'stopped', cpu: '0%', ram: '0/1 GB', storage: '1.09 GB / 177.1 GB', ip: '192.168.1.103' },
+                          { id: 'bisqvelocity', name: 'BisqVelocity', status: 'running', cpu: '45%', ram: '2.1/4 GB', storage: '706.43 MB / 2 GB', ip: 'bisqvit.host.ru' },
+                          { id: 'api-server', name: 'api-server', status: 'running', cpu: '23%', ram: '1.5/2 GB', storage: '174.17 MB / 2 GB', ip: '192.168.1.102' },
+                          { id: 'test-server', name: 'test-server', status: 'stopped', cpu: '0%', ram: '0/1 GB', storage: '1.09 GB / 177.1 GB', ip: '192.168.1.103' },
                         ].map((server, idx) => (
-                          <Card key={idx} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedServer(server.name)}>
+                          <Card key={idx} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/server/${server.id}`)}>
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div className="flex items-center gap-4">
